@@ -9,6 +9,10 @@
 import vertShaderCode from '../shaders/triangle.vert.wgsl';
 import fragShaderCode from '../shaders/triangle.frag.wgsl';
 import { Scene } from '../scenes/Scene';
+export enum renderMode {
+    triangle='triangle-list',
+    line='line-strip'
+}
 class Renderer {
     canvas: HTMLCanvasElement;
     // ⚙️ API Data Structures
@@ -18,12 +22,13 @@ class Renderer {
     context: GPUCanvasContext;
     pipeline: GPURenderPipeline;
     vertexBuffer: GPUBuffer;
-    colorBuffer: GPUBuffer;
     commandEncoder: GPUCommandEncoder;
     renderPass: GPURenderPassEncoder;
+    presentationFormat:GPUTextureFormat;
     constructor(canvas) {
         this.canvas = canvas;
         this.start();
+        this.presentationFormat=navigator.gpu.getPreferredCanvasFormat();
     }
 
     //  Start the rendering engine
@@ -53,6 +58,8 @@ class Renderer {
 
         return true;
     }
+
+
     // ↙️ Resize swapchain, frame buffer attachments
     private initContext() {
         // ⛓️ Swapchain
@@ -60,37 +67,52 @@ class Renderer {
             this.context = this.canvas.getContext('webgpu');
             const canvasConfig: GPUCanvasConfiguration = {
                 device: this.device,
-                format: navigator.gpu.getPreferredCanvasFormat()
+                format: this.presentationFormat
             };
             this.context.configure(canvasConfig);
         }
     }
 
-    // 渲染管线设置
-    public async renderPipeline(scene: Scene) {
-        // 创建GPU命令编码器对象
+    public async render(scene:Scene,mode:renderMode){
         if (!this.device) {
             await this.start();
         }
-        this.pipeline = this.device.createRenderPipeline({
+        let vertexArrayParam=scene.getModelParam();
+        let vertexArray=vertexArrayParam.vertexArray;
+        this.vertexBuffer=this.device.createBuffer({
+            size:vertexArray.byteLength,
+            usage:GPUBufferUsage.VERTEX,
+            mappedAtCreation: true,
+          })
+          new Float32Array(this.vertexBuffer.getMappedRange()).set( vertexArray);
+          this.vertexBuffer.unmap();
+
+          this.pipeline = this.device.createRenderPipeline({
             layout: 'auto',
             vertex: {
                 //顶点相关配置
                 module: this.device.createShaderModule({
                     code: vertShaderCode
                 }),
-                entryPoint: 'main',
                 buffers: [
                     {
-                        arrayStride: 3 * 4, //一个顶点数据占用的字节长度，该缓冲区一个顶点包含xyz三个分量，每个数字是4字节浮点数，3*4字节长度
-                        attributes: scene.getModelsPositionAttributes()
-                        //arrayStride表示每组顶点数据间隔字节数，offset表示读取改组的偏差字节数，没特殊需要一般设置0
+                      arrayStride:4*6,
+                      attributes: [
+                        {
+                          // position
+                          shaderLocation: 0,
+                          offset: 0,
+                          format: 'float32x4',
+                        },
+                        {
+                          // color
+                          shaderLocation: 1,
+                          offset: 3*4,
+                          format: 'float32x2',
+                        },
+                      ],
                     },
-                    {
-                        arrayStride: 3 * 4,
-                        attributes: scene.getModelsColorAttributes()
-                    }
-                ]
+                  ],
             },
             fragment: {
                 // 片元着色器
@@ -99,21 +121,14 @@ class Renderer {
                 }),
                 targets: [
                     {
-                        format: navigator.gpu.getPreferredCanvasFormat() //和WebGPU上下文配置的颜色格式保持一致
+                        format: this.presentationFormat //和WebGPU上下文配置的颜色格式保持一致
                     }
                 ]
             },
             primitive: {
-                topology: 'triangle-list' //三角形绘制顶点数据
+                topology: mode 
             }
         });
-    }
-    //渲染指令设置
-    public async encodeCommands() {
-        // 创建GPU命令编码器对象
-        if (!this.device) {
-            await this.start();
-        }
         this.commandEncoder = this.device.createCommandEncoder();
         this.renderPass = this.commandEncoder.beginRenderPass({
             // 给渲染通道指定颜色缓冲区，配置指定的缓冲区
@@ -129,13 +144,18 @@ class Renderer {
             ]
         });
         this.renderPass.setPipeline(this.pipeline);
-        this.renderPass.draw(3);
+        this.renderPass.setVertexBuffer(0,this.vertexBuffer);
+        this.renderPass.draw(vertexArrayParam.vertexCount);
         this.renderPass.end();
         // 命令编码器.finish()创建命令缓冲区(生成GPU指令存入缓冲区)
         const commandBuffer = this.commandEncoder.finish();
         // 命令编码器缓冲区中命令传入GPU设备对象的命令队列.queue
         this.device.queue.submit([commandBuffer]);
+
     }
+
+
+
 }
 
 export { Renderer };

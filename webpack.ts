@@ -21,6 +21,7 @@ let config: webpack.Configuration = {
         extensions: ['.ts', '.tsx', 'js'],
         modules: [path.resolve(__dirname, 'src'), 'node_modules']
     },
+    devtool:isProduction?false:'source-map',
     module: {
         rules: [
             {
@@ -38,7 +39,8 @@ let config: webpack.Configuration = {
                 test: /\.wgsl/,
                 type: 'asset/source'
             }
-        ]
+        ],
+    
     },
     node: false,
     plugins: [

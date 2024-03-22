@@ -7,7 +7,7 @@
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import { Model } from '../models/Model';
-
+import { VertexArrayParam } from '../models/Geometry';
 class Scene {
     models: Model[];
     constructor() {
@@ -23,49 +23,28 @@ class Scene {
         return this.models.indexOf(model) !== -1;
     }
 
-    getModelsPositionAttributes() {
-        let attributes: Iterable<GPUVertexAttribute> = [];
-        const iterator = this.models[Symbol.iterator]();
+    getModelParam(){
+   
+        let totalSize=0;
+        this.models.forEach((model:Model)=>{
+           totalSize+=model.getModelVertexArrayParam().vertexCount*3*2;
+      
+        })
 
-        // 遍历 attributes，并将 this.models 中的值赋给每个属性
-        for (let attribute of attributes) {
-            const nextModel = iterator.next();
-            if (nextModel.done) {
-                break; // 如果 this.models 的长度小于 attributes 的长度，退出循环
-            }
+        let concatenatedArray = new Float32Array(totalSize);
+        let offset = 0;
+        this.models.forEach((model:Model)=>{
 
-            // 假设 GPUVertexAttribute 类型有一个属性 value，用于存储值
-            attribute = nextModel.value.getPositionAttributes();
+            concatenatedArray.set(model.getModelVertexArrayParam().vertexArray,offset);
+            offset+=model.getModelVertexArrayParam().vertexArray.length;
+         })
+        
+        let vertexArray:VertexArrayParam={
+            vertexArray:concatenatedArray,
+            vertexCount:totalSize/6
         }
-
-        // 确保所有值都已赋值
-        if (!iterator.next().done) {
-            console.error('this.models 的长度大于 attributes 的长度');
-        }
-        return attributes;
-    }
-
-    getModelsColorAttributes() {
-        let attributes: Iterable<GPUVertexAttribute> = [];
-        const iterator = this.models[Symbol.iterator]();
-
-        // 遍历 attributes，并将 this.models 中的值赋给每个属性
-        for (let attribute of attributes) {
-            const nextModel = iterator.next();
-            if (nextModel.done) {
-                break; // 如果 this.models 的长度小于 attributes 的长度，退出循环
-            }
-
-            // 假设 GPUVertexAttribute 类型有一个属性 value，用于存储值
-            attribute = nextModel.value.getColorAttributes();
-        }
-
-        // 确保所有值都已赋值
-        if (!iterator.next().done) {
-            console.error('this.models 的长度大于 attributes 的长度');
-        }
-        return attributes;
-    }
+        return vertexArray;
+    }  
 
     remove(model) {
         const index = this.models.indexOf(model);
