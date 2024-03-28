@@ -17,7 +17,7 @@ class Model {
    getModelVertexArrayParam(){
     return this.geometry.getVertexArrayParm();
    }
-
+ 
 
    
 }

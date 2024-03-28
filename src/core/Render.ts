@@ -11,11 +11,11 @@ import fragShaderCode from '../shaders/triangle.frag.wgsl';
 import { Scene } from '../scenes/Scene';
 export enum renderMode {
     triangle='triangle-list',
-    line='line-strip'
+    line='line-strip',
+    point='line-list'
 }
 class Renderer {
     canvas: HTMLCanvasElement;
-    // ⚙️ API Data Structures
     adapter: GPUAdapter;
     device: GPUDevice;
     queue: GPUQueue;
@@ -25,10 +25,12 @@ class Renderer {
     commandEncoder: GPUCommandEncoder;
     renderPass: GPURenderPassEncoder;
     presentationFormat:GPUTextureFormat;
+    canvasToSizeMap:WeakMap<object, any>;
     constructor(canvas) {
         this.canvas = canvas;
         this.start();
         this.presentationFormat=navigator.gpu.getPreferredCanvasFormat();
+        this.canvasToSizeMap=new WeakMap();
     }
 
     //  Start the rendering engine
@@ -71,6 +73,27 @@ class Renderer {
             };
             this.context.configure(canvasConfig);
         }
+
+        
+    }
+
+   
+
+     resizeCanvasToDisplaySize(canvas:HTMLCanvasElement) {
+      // Get the canvas's current display size
+      let { width, height } = this.canvasToSizeMap.get(canvas) || canvas;
+  
+      // Make sure it's valid for WebGPU
+      width = Math.max(1, Math.min(width, this.device.limits.maxTextureDimension2D));
+      height = Math.max(1, Math.min(height, this.device.limits.maxTextureDimension2D));
+  
+      // Only if the size is different, set the canvas size
+      const needResize = canvas.width !== width || canvas.height !== height;
+      if (needResize) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      return needResize;
     }
 
     public async render(scene:Scene,mode:renderMode){
@@ -151,7 +174,16 @@ class Renderer {
         const commandBuffer = this.commandEncoder.finish();
         // 命令编码器缓冲区中命令传入GPU设备对象的命令队列.queue
         this.device.queue.submit([commandBuffer]);
-
+        const observer = new ResizeObserver(entries => {
+            for (const entry of entries) {
+              this.canvasToSizeMap.set(entry.target, {
+                 width: entry.contentBoxSize[0].inlineSize,
+                 height: entry.contentBoxSize[0].blockSize,
+              });
+            }
+            this.render(scene,mode);
+          });
+          observer.observe(this.canvas);
     }
 
 

@@ -22,6 +22,7 @@ class Viewer {
         this.renderer.render(this.scene,mode);
     
     }
+
 }
 
 export { Viewer };

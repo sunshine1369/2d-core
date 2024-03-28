@@ -13,13 +13,13 @@ class Scene {
     constructor() {
         this.models = [];
     }
-    add(model) {
+    add(model:Model) {
         if (this.contains(model)) return;
 
         this.models.push(model);
     }
 
-    contains(model) {
+    contains(model:Model) {
         return this.models.indexOf(model) !== -1;
     }
 
@@ -46,7 +46,7 @@ class Scene {
         return vertexArray;
     }  
 
-    remove(model) {
+    remove(model:Model) {
         const index = this.models.indexOf(model);
         if (index !== -1) {
             this.models.splice(index, 1);

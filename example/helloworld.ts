@@ -10,7 +10,8 @@ import { Viewer } from '../src/Viewer';
 import { Model } from '../src/models/Model';
 import { renderMode } from '../src/core/Render';
 const canvas = document.getElementById('gfx') as HTMLCanvasElement;
-canvas.width = canvas.height = 640;
+
+canvas.width = canvas.height = 800;
 const viewer = new Viewer(canvas);
 let model1=new Model([0,0,1,1,0,1,0,1,1],[0,0,1,0,1,0,0,0,1]);
 let model2=new Model([0,0,1,-1,0,1,0,-1,1],[1,0,0,0,1,0,0,0,1]);
@@ -19,3 +20,12 @@ viewer.scene.add(model1);
 viewer.scene.add(model2);
 viewer.scene.add(model3);
 viewer.render(renderMode.triangle);
+
+document.getElementById('add').onclick=function(){
+    viewer.scene.add(model1);
+    viewer.render(renderMode.triangle);
+}
+document.getElementById('remove').onclick=function(){
+    viewer.scene.remove(model1);
+    viewer.render(renderMode.triangle);
+}
